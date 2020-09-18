@@ -1,0 +1,13 @@
+<?xml version="1.0"?>
+<launch>
+<!--- Run gmapping -->
+  <include file="$(find p3dx_move)/launch/amcl.launch">
+    <!-- <arg name="nas" value="p3dx_1"/> --> <!--not necessary--> 
+  </include>
+  <!--- Run Move Base -->
+  <include file="$(find p3dx_move)/launch/move_base.launch" >
+  <arg name="nas" value="p3dx_1"/>
+  <arg name="no_static_map" value="true"/>
+  </include>
+  
+</launch>

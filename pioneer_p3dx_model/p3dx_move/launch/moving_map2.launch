@@ -1,0 +1,20 @@
+<?xml version="1.0"?>
+
+<launch>
+<!--- Run gmapping -->
+  <include file="$(find p3dx_move)/launch/amcl.launch">
+    <arg name="nas" value="p3dx_2"/>
+    <arg name="initial_pose_x" value="2.0"/>
+    <arg name="initial_pose_y" value="-3.0"/>
+    <arg name="initial_pose_a" value="0.0"/>
+  </include>
+  <!--- Run Move Base -->
+  <include file="$(find p3dx_move)/launch/move_base.launch" >
+  <arg name="nas" value="p3dx_2"/>
+  <arg name="no_static_map" value="true"/>
+  </include>
+  
+ <!-- <node pkg="simple_navigation_goals" name="gotopose" type="gotopose" output="screen" />
+  <node pkg="simple_navigation_goals_2" name="gotopose_2" type="gotopose_2" output="screen" /> -->
+
+</launch>
