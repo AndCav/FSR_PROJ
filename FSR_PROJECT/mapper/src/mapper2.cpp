@@ -1,5 +1,5 @@
 #include "mapper.h"
-
+#define NOT_FOUND
 
 bool Vertex::add_link(const std::shared_ptr<Vertex> v){
 	int i=0;
@@ -69,6 +69,100 @@ for(int c=0;c<nodes_.size();c++){
 return index;
 }
 
+
+
+bool open_find(const std::vector<std::shared_ptr<Vertex>> OPEN,std::shared_ptr<Vertex> v){
+bool found=false;
+int f=0;
+while((!found)&&(f<OPEN.size())){
+	if(*OPEN[f]==*v) found=true;
+	f++;
+	}
+return found;
+}
+
+
+void A_star_routine(RRT roadmap, const Vertex goal){
+//goal belongs to roadmap?
+//se si tutt appo
+//else aggiungi un link, trova il più vicino e collega, rifai l'algoritmo con qrand=goal;
+std::vector<std::shared_ptr<Vertex>> open;
+//tree[0].node=roadmap.nodes_[0];
+int sizeoflinks=roadmap.nodes_[0]->links_.size();
+
+
+std::shared_ptr<Vertex> Qbest;
+Qbest=roadmap.nodes_[0];
+Qbest->set_visited(true);
+Qbest->total_cost=0;
+Qbest->calc_heur(goal);
+double cost=roadmap.nodes_[0]->calc_heur(goal)*10;
+double buff_cost;
+bool open_empty=false;
+open.push_back(Qbest);
+int open_size=open.size();
+std::cout<<"list size "<<open_size<<std::endl;
+//!open.empty()
+while((*Qbest!=goal)&&(open_size!=0)){
+
+
+	//std::cout<<"\n ciao"<<std::endl;
+	double f_func=0;
+	int newbestpos=0;
+	cost=open[0]->total_cost + open[0]->get_heur();
+	for (int i=0;i<open.size();i++){
+		f_func=open[i]->total_cost + open[i]->get_heur();
+		if(cost>f_func){ cost=f_func; newbestpos=i;}
+	}
+	
+	
+	//std::cout<<"ciao2"<<std::endl;
+	Qbest=open[newbestpos];
+	open.erase(open.begin() + newbestpos);
+	
+	
+	//std::cout<<"ciao3"<<std::endl;
+	for(int i=0;i<Qbest->links_.size();i++){
+	//cerca il costo migliore
+		if(!Qbest->links_[i]->is_visited()){
+			Qbest->links_[i]->set_visited(true);
+			Qbest->links_[i]->parent_=Qbest;
+			Qbest->links_[i]->calc_heur(goal);
+			Qbest->links_[i]->total_cost=Qbest->total_cost + Qbest->cost_[i];
+			open.push_back(Qbest->links_[i]);		
+			}
+		else if((Qbest->links_[i]->total_cost)>(Qbest->total_cost + Qbest->cost_[i])){
+			Qbest->links_[i]->parent_=Qbest;
+			
+			if(!open_find(open,Qbest->links_[i])){
+				open.push_back(Qbest->links_[i]);
+				Qbest->links_[i]->calc_heur(goal);
+				Qbest->links_[i]->total_cost=Qbest->total_cost + Qbest->cost_[i];
+				}
+			else {
+				Qbest->links_[i]->calc_heur(goal);
+				Qbest->links_[i]->total_cost=Qbest->total_cost + Qbest->cost_[i];
+				}
+			}
+		}
+	open_size=open.size();
+	//std::cout<<"\n size of open "<<open_size;
+
+	}
+	//ROS_INFO("ci sono");
+	if(*Qbest!=goal){ROS_INFO("ho fallito");}
+	else{
+	std::shared_ptr<Vertex> printer;
+	//ROS_INFO("ci sono");
+	printer=Qbest;
+	while(*printer!=*roadmap.nodes_[0]){
+		std::cout<<"\n ["<<printer->x<<","<<printer->y<<"]";
+		printer=printer->parent_;
+	}
+	std::cout<<"\n ["<<printer->x<<","<<printer->y<<"]";
+	}
+	
+}
 
 void RRT::iter(){
 	std::cout<<"start";
@@ -159,8 +253,9 @@ void RRT::iter(){
 						qnew.y+=(buffy*count);
 						if(add_node(qnew)){ 
 						//std::cout<<" \n  accomplished number of nodes "<<get_size();
-						//nodes_[nodes_.size()-1].add_link(nearpos,nodes_[nearpos]);
-						//nodes_[nearpos].add_link(nodes_.size()-1,nodes_[nodes_.size()-1]);
+						
+					nodes_[nodes_.size()-1]->add_link(nodes_[nearpos]);
+					nodes_[nearpos]->add_link( nodes_[nodes_.size()-1]);
 						 }
 						count=0;
 						}
@@ -184,8 +279,17 @@ void RRT::iter(){
 	
 	}
 	s=get_size(); 
-	if(s>(MAX_ITER-10)) std::cout<<" \n number of s "<<s;
+	/*if(s>(MAX_ITER-10)){
+		std::cout<<" \n number of s "<<s;
+		
+		
+		for(int i=0;i<20;i++){
+		
+			std::cout<<"\n SIZE OF LINKS OF i-esimo "<<nodes_[i]->links_.size();}
+		}*/
 	}
+	A_star_routine(*this,*nodes_[MAX_ITER-1]);
+	ROS_INFO("HO FINITO");
 }
 
 
@@ -194,35 +298,7 @@ void RRT::run() {
 	ros::spin();	
 
 }
-void A_star_routine(RRT roadmap, const Vertex goal){
-//goal belongs to roadmap?
-//se si tutt appo
-//else aggiungi un link, trova il più vicino e collega, rifai l'algoritmo con qrand=goal;
-std::vector<std::share_ptr<Vertex>> open;
-int sizeoflinks=roadmap.nodes_[0]->links_.size();
-for(int i=0;i<sizeoflinks;i++){
-open.push_back(Qbest->links_[i]);
-}
 
-std::shared_ptr<Vertex> Qbest;
-Qbest=roadmap.nodes[0];
-Qbest->setVisited(true);
-double cost=roadmap.nodes[0]->calc_heur(goal)*10;
-double buff_cost;
-while((*Qbest!=goal)&&(!open.empty)){
-
-	for(int i=0;i<Qbest->links_.size();i++){
-	//cerca il costo migliore
-	}
-	
-
-}
-
-
-
-
-
-}
 
 int main (int argc,char** argv) {
 ros::init(argc,argv,"mappin" ) ;

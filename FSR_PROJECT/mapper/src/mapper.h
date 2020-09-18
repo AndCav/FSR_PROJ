@@ -12,7 +12,7 @@
 #define Xzero 200
 #define Yzero 184
 
-#define MAX_ITER 400
+#define MAX_ITER 1000
 
 
 //Create class for map collision checking
@@ -127,6 +127,7 @@ class Vertex {
   std::vector<double> cost_;
   double heur_cost_;
   double total_cost;
+  std::shared_ptr<Vertex> parent_;
 };
 
 
