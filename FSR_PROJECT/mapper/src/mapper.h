@@ -11,8 +11,8 @@
 #define Height 384
 #define Xzero 200
 #define Yzero 184
-
-#define MAX_ITER 1000
+#define step  0.05
+#define MAX_ITER 700
 
 
 //Create class for map collision checking
@@ -144,6 +144,7 @@ class RRT{
 	int closest(const Vertex v);
 	bool find(const Vertex v);
 	void run();
+	bool freepath(Grid map, Vertex v1, Vertex v2);
 	
 	//information functions
 	int get_size(){//size_=nodes_.size();

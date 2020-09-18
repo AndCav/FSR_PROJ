@@ -69,7 +69,39 @@ for(int c=0;c<nodes_.size();c++){
 return index;
 }
 
+bool RRT::freepath(Grid map, Vertex v1, Vertex v2){
+  // The angle of the line
+  double dx=v1.x-v2.x;
+  double dy=v1.x-v2.y;
+  double ang = atan2(dy, dx);
+  double len=v1-v2;
+ // cout<<"Found a node near the new one, is the path free?"<<endl;
+  // The direction cosines
+  double kx = cos(ang);
+  double ky = sin(ang);
+  bool isfree=false;
+  bool done = false;
+  double x=0;
+  double y=0;
+  double pos = step; 
+  while (!done) {
+          
+     x = v2.x + pos * kx;
+     y = v2.y + pos * ky;
+    // cout<<"Point on a path (is free?): "<<x <<" "<<y<<endl;
+     pos += step;
+    if(!map.no_collision(x,y)){
+      isfree=false;
+      done=true;
+    }
+    else if (pos > len) {
+         
+         isfree=true;
+         done = true; 
+    }
+  }
 
+}
 
 bool open_find(const std::vector<std::shared_ptr<Vertex>> OPEN,std::shared_ptr<Vertex> v){
 bool found=false;
@@ -174,7 +206,6 @@ void RRT::iter(){
 	double dy=0;
 	double xstep=0;
 	double ystep=0;
-	double step=0.05;
 	int nearpos=0;
 	double dist=1000;
 	int count=0;
@@ -202,53 +233,54 @@ void RRT::iter(){
 		if(find(qrand)){ //std::cout<<"already in memory";
 		}
 		else{
-		if(true){
-		//std::cout<<" \n qrand  "<<qrand.x<<" "<<qrand.y;
-		//std::cout<<"1";
 			nearpos=closest(qrand);
-		//std::cout<<"\n nearpos "<<nearpos;
 			qnear.x=nodes_[nearpos]->x;
 			qnear.y=nodes_[nearpos]->y;
-		//std::cout<<" \nqnear coordinates "<<qnear.x<<"  "<<qnear.y;
 			dist=qrand-qnear;
+			double cat_x=qrand.x-qnear.x;
+			double cat_y=qrand.y-qnear.y;
+			double ang = atan2(cat_y, cat_x);
+			 std::cout<<"Found a node near the new one, is the path free?"<<std::endl;
+			  // The direction cosines
+			double cosTeta = cos(ang);
+			double sinTeta = sin(ang);
 			
+			std::cout<<"\n check qrand"<<qrand.x<<"  "<<qrand.y;
 			if(dist>0.2){
-				//std::cout<<" \nFAR";
-		//std::cout<<"got some point";
-				dx=((qrand.x - qnear.x)*0.2)/dist;
-				dy=((qrand.y - qnear.y)*0.2)/dist;
+				qnew.x=qnear.x+cosTeta*0.2;
+				qnew.y=qnear.y+sinTeta*0.2;
+				dist=qnew-qnear;
 				}
-			else{   //std::cout<<"\n near ";
-				dx=0;
-				dy=0;
+			else{   qnew.x=qrand.x;
+				qnew.y=qrand.y;
 				}
-			qnew.x=qnear.x+dx;
-			qnew.y=qnear.y+dy;
-			//std::std::cout<<"\n check qnew collision";
+			
+			std::cout<<"\n check dist"<<dist;
+			std::cout<<"\n check qnew"<<qnew.x<<"  "<<qnew.y;
 			free=map.no_collision(qnew.x,qnew.y);
 			
 			if(free){
-			//	std::std::cout<<" \n calcolo step";
+				std::cout<<" \n calcolo step";
 
 				
-				xstep=((qnew.x - qnear.x)*step)/(dist);
-				ystep=((qnew.y - qnear.y)*step)/(dist);
+				xstep=step*cosTeta;
+				ystep=step*sinTeta;
 				double buffx=xstep;
 				double buffy=ystep;
 				accomplished=false;
 				while(free&&(!accomplished)){
 					
-					accomplished=((step*count)<=dist);
+					accomplished=((step*count)>=dist);
 					free=(map.no_collision(qnew.x + xstep,qnew.y+ystep));
 					if(free&&(!accomplished)){
 						count++; 
 						xstep=buffx*count;
 						ystep=buffy*count;
-						////std::cout<<"\n free"<<count;
+						std::cout<<"\n free"<<count;
 						}
 					else if(free&&accomplished){
 						//aggiungi il nodo
-						//std::cout<<" \n 1qnew coordinate: "<<qnew.x<<"  "<<qnew.y;
+						std::cout<<" \n 1qnew coordinate: "<<qnew.x<<"  "<<qnew.y;
 						qnew.x+=(buffx*count);
 						qnew.y+=(buffy*count);
 						if(add_node(qnew)){ 
@@ -274,11 +306,10 @@ void RRT::iter(){
 				}
 			}
 		}
-		else {//std::cout<<"not a valid point";
-			}
 	
-	}
 	s=get_size(); 
+	std::cout<<" \n number of s "<<s;
+	}
 	/*if(s>(MAX_ITER-10)){
 		std::cout<<" \n number of s "<<s;
 		
@@ -287,7 +318,6 @@ void RRT::iter(){
 		
 			std::cout<<"\n SIZE OF LINKS OF i-esimo "<<nodes_[i]->links_.size();}
 		}*/
-	}
 	A_star_routine(*this,*nodes_[MAX_ITER-1]);
 	ROS_INFO("HO FINITO");
 }
