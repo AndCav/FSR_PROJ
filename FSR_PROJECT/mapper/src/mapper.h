@@ -12,7 +12,7 @@
 #define Xzero 200
 #define Yzero 184
 #define step  0.05
-#define MAX_ITER 700
+#define MAX_ITER 400
 
 
 //Create class for map collision checking
@@ -42,6 +42,7 @@ void Grid::topic_callback(nav_msgs::OccupancyGrid data){
 for (int y = 0; y < Height; y++){
 for (int x = 0; x < Width; x++){
 if(data.data[y * Width + x]==-1) cell[383-y][x] = 100;
+else cell[383-y][x]=data.data[y * Width + x];
 }
 }
 ison=true;
@@ -58,7 +59,8 @@ int pos_x; int pos_y;
 if((x>9)||(x<-9)||(y>9)||(y<-9)) return false;
 get_position(pos_x,pos_y,x,y);
 
-if((cell[pos_y][pos_x]>60)||(cell[pos_y][pos_x]==-1)) return false ;
+//std::cout<<"\n il valore è :"<<cell[pos_y][pos_x]<<std::endl;
+if((cell[pos_y][pos_x]>20)||(cell[pos_y][pos_x]<0)) return false ;
 else return true ;
 }
 
@@ -140,12 +142,13 @@ class RRT{
 	RRT(const Vertex v);
 	RRT(int initsize){nodes_.resize(initsize);}
 	bool add_node(const Vertex v);
-	void iter();
+	void iter(int SorG);
 	int closest(const Vertex v);
 	bool find(const Vertex v);
-	void run();
+	void run(Vertex source,Vertex goal);
 	bool freepath(Grid map, Vertex v1, Vertex v2);
-	
+	void connect();
+	void A_star_routine();
 	//information functions
 	int get_size(){//size_=nodes_.size();
 	return size_;}
@@ -157,6 +160,13 @@ class RRT{
 	int size_;
   private:
   	std::allocator<int> alloc;
+  	std::vector<std::shared_ptr<Vertex>> Source_nodes;
+  	std::vector<std::shared_ptr<Vertex>> Goal_nodes;
+  	Vertex source;
+  	Vertex goal;
+  	bool fromSource;
+  	bool fromGoal;
+  	Grid map;
 
 
 };
