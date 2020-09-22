@@ -1,27 +1,46 @@
 #include "mapper.h"
-#define NOT_FOUND
 
-bool Vertex::add_link(const std::shared_ptr<Vertex> v){
-	int i=0;
-	bool found=false;
-	while((i<links_.size())&&(!found)){
-	if(links_[i]==v){std::cout<<"\nlink already exists"; found=true; }
-	i++;	
-	}
-	if(!found){
-	links_.push_back(v);
-	double costo = std::sqrt(std::pow(x - v->x , 2) + std::pow(y - v->y , 2));
-	cost_.push_back(costo);
-	
-//	std::cout<<"\n "<<pos<<" added link from: "<<this->x<<" "<<this->y<<"to this:"<<v.x<<" "<<v.y;
-	return true;
-	}
-	else return false;}
+Grid::Grid(){
+_topic_sub = _nh.subscribe("/costmap/costmap/costmap", 10, &Grid::topic_callback,this);
+ ison=false;
+}
+
+
+
+void Grid::topic_callback(nav_msgs::OccupancyGrid data){
+
+for (int y = 0; y < Height; y++){
+for (int x = 0; x < Width; x++){
+cell[383-y][x]=data.data[y * Width + x];
+}
+}
+ison=true;
+}
+
+void Grid::get_position(int &pos_x,int &pos_y,double x, double y){
+pos_x= Xzero + int(x/0.05);
+pos_y= Yzero - int(y/0.05);
+}
+
+
+bool Grid::no_collision(double x,double y){
+int pos_x; int pos_y;
+if((x>9)||(x<-9)||(y>9)||(y<-9)) return false;
+get_position(pos_x,pos_y,x,y);
+
+//std::cout<<"\n il valore è :"<<cell[pos_y][pos_x]<<std::endl;
+if((cell[pos_y][pos_x]>30)||(cell[pos_y][pos_x]<0)){ 
+							//std::cout<<"found obstacle"; 
+							return false ;}
+else return true ;
+}
 
 
 RRT::RRT(){
 	nodes_.resize(0);
 	size_=0;
+	MAX_ITER=50;
+	MAX_LENGTH=0.4;
 }
 
 RRT::RRT(const Vertex v){
@@ -56,6 +75,7 @@ else{
 }
 
 
+
 //****************
 int FIND(const Vertex v,std::vector<std::shared_ptr<Vertex>> &nodes){
 bool found=false;
@@ -78,7 +98,7 @@ if(FIND(v,nodes)>=0) {
  return false;
 }
 else{	
-  	std::allocator<int> allocat;
+  	std::allocator<Vertex> allocat;
 	nodes.push_back(std::allocate_shared<Vertex> (allocat,v));
 	//std::cout<<"\nNODE ADDED";
 	return true;
@@ -124,7 +144,7 @@ bool RRT::freepath(Grid map, Vertex v1, Vertex v2){
   double y=0;
   double pos = step; 
   while (!done) {
-          
+      
      x = v2.x + pos * kx;
      y = v2.y + pos * ky;
     // cout<<"Point on a path (is free?): "<<x <<" "<<y<<endl;
@@ -222,14 +242,22 @@ while((*Qbest!=goal)&&(open_size!=0)){
 	//ROS_INFO("ci sono");
 	if(*Qbest!=goal){ROS_INFO("ho fallito");}
 	else{
-	std::shared_ptr<Vertex> printer;
+	//std::shared_ptr<Vertex> printer;
+	std::vector<Vertex> path;
 	//ROS_INFO("ci sono");
-	printer=Qbest;
-	while(*printer!=*nodes_[0]){
-		std::cout<<"\n ["<<printer->x<<","<<printer->y<<"]";
-		printer=printer->parent_;
+	//printer=Qbest;
+	while(*Qbest!=source){
+		std::cout<<"\n ["<<Qbest->x<<","<<Qbest->y<<"]";
+		Vertex buff(Qbest->x,Qbest->y);
+		path.push_back(buff);
+		Qbest=Qbest->parent_;
 	}
-	std::cout<<"\n ["<<printer->x<<","<<printer->y<<"]";
+	std::cout<<"\npath finito";
+	std::cout<<"\n vafancul";
+		
+		NAVO navigator;
+		sleep(10);
+		navigator.tripto(path);
 	}
 	
 }
@@ -286,9 +314,9 @@ void RRT::iter(int SorG){
 			double sinTeta = sin(ang);
 			
 //			std::cout<<"\n check qrand"<<qrand.x<<"  "<<qrand.y;
-			if(dist>0.4){
-				qnew.x=qnear.x+cosTeta*0.4;
-				qnew.y=qnear.y+sinTeta*0.4;
+			if(dist>MAX_LENGTH){
+				qnew.x=qnear.x + cosTeta*MAX_LENGTH;
+				qnew.y=qnear.y + sinTeta*MAX_LENGTH;
 				dist=qnew-qnear;
 				}
 			else{   qnew.x=qrand.x;
@@ -301,46 +329,51 @@ void RRT::iter(int SorG){
 			
 			if(free){
 //				std::cout<<" \n calcolo step";
-
-				
+				double distance=0;
+ 				count=0;
 				xstep=step*cosTeta;
 				ystep=step*sinTeta;
-				double buffx=xstep;
-				double buffy=ystep;
-				accomplished=false;
-				while(free&&(!accomplished)){
-					
-					accomplished=((step*count)>=dist);
-					free=(map.no_collision(qnear.x + xstep,qnear.y+ystep));
-					if(free&&(!accomplished)){
-						count++; 
-						xstep=buffx*count;
-						ystep=buffy*count;
+				/*std::cout<<" \n qnear coordinate:"<<qnear.x<<"  "<<qnear.y;
+				std::cout<<" \n qnew coordinate:"<<qnew.x<<"  "<<qnew.y;
+				std::cout<<"\n step:"<<xstep<<" "<<ystep<<std::endl;
+				std::cout<<"\n ********* \n";*/
+				while(free&&(distance<dist)){
+					distance=step*count;
+//					std::cout<<"\n looking";
+					qnew.x=qnear.x+xstep*count;
+					qnew.y=qnear.y+ystep*count;
+					//accomplished=(qnew-qnear)>=dist;
+					free=map.no_collision(qnew.x,qnew.y);
+					if(free&&(distance<dist)){
+						count++;
 //						std::cout<<"\n free"<<count;
 						}
-					else if(free&&accomplished){
+					else if(free&&((step*count)>=dist)){
 						//aggiungi il nodo
-//						std::cout<<" \n 1qnew coordinate: "<<qnew.x<<"  "<<qnew.y;
-						qnew.x=qnear.x+(buffx*count);
-						qnew.y=qnear.y+(buffy*count);
+						//std::cout<<" \n 1qnew coordinate: "<<qnew.x<<"  "<<qnew.y;
+
 						if(ADD_NODE(qnew,nodes)){ 
-						//std::cout<<" \n  accomplished number of nodes "<<get_size();
 						
-					nodes[nodes.size()-1]->add_link(nodes[nearpos]);
-					nodes[nearpos]->add_link( nodes[nodes.size()-1]);
+						if (SorG==1) std::cout<<" \n Source qnew coordinate: "<<qnew.x<<"  "<<qnew.y;
+						if (SorG==2) std::cout<<" \n Goal qnew coordinate: "<<qnew.x<<"  "<<qnew.y;
+
+							nodes[nodes.size()-1]->add_link(nodes[nearpos]);
+							nodes[nearpos]->add_link( nodes[nodes.size()-1]);
 						 }
 						count=0;
 						}
 					else if(!free){
-					if(count!=0){count--;}
-						qnew.x=qnear.x+xstep-buffx;
-						qnew.y=qnear.y+ystep-buffy;
-						//std::cout<<" \n qnew coordinate:"<<qnew.x<<"  "<<qnew.y;
+						qnew.x-=xstep;
+						qnew.y-=ystep;
 						if(ADD_NODE(qnew,nodes)){
-					nodes[nodes.size()-1]->add_link(nodes[nearpos]);
-					nodes[nearpos]->add_link( nodes[nodes.size()-1]);
-						} 
+							nodes[nodes.size()-1]->add_link(nodes[nearpos]);
+							nodes[nearpos]->add_link( nodes[nodes.size()-1]);
+							if (SorG==1) std::cout<<" \n Source qnew coordinate: "<<qnew.x<<"  "<<qnew.y;
+							if (SorG==2) std::cout<<" \n Goal qnew coordinate: "<<qnew.x<<"  "<<qnew.y;
+
+								} 
 						count=0;
+						
 					}
 					
 				}
@@ -353,6 +386,7 @@ void RRT::iter(int SorG){
 		Source_nodes.resize(0);
 		for(int o=0;o<nodes.size();o++){
 			Source_nodes.push_back(nodes[o]);
+			//std::cout<<"\n ["<<nodes[o]->x<<","<<nodes[o]->y<<"]";
 		}
 		
 	fromSource=true;
@@ -361,6 +395,7 @@ void RRT::iter(int SorG){
 		Goal_nodes.resize(0);
 		for(int o=0;o<nodes.size();o++){
 			Goal_nodes.push_back(nodes[o]);
+			//std::cout<<"\n ["<<nodes[o]->x<<","<<nodes[o]->y<<"]";
 		}
 		
 	fromGoal=true;
@@ -383,6 +418,9 @@ void RRT::run(Vertex s,Vertex g) {
 	fromGoal=false;
 	source=s;
 	goal=g;
+	
+	MAX_ITER=200;
+	MAX_LENGTH=0.2;
 	boost::thread get_fromSource_t( &RRT::iter, this,1);
 	boost::thread get_fromGoal_t( &RRT::iter, this,2);
 	boost::thread connect_t( &RRT::connect, this);
@@ -401,10 +439,11 @@ void RRT::connect(){
 	std::random_device devicey;
 	std::mt19937 engx(devicex());
 	std::mt19937 engy(devicey());
-	std::uniform_int_distribution<int> distX(-900,900);
-	std::uniform_int_distribution<int> distY(-900,900);
+	std::uniform_int_distribution<int> distX(-750,700);
+	std::uniform_int_distribution<int> distY(-700,700);
 	bool from_source=true;
 	bool connected=false;
+	int connection=0;
 	double x_rand=0;
 	double y_rand=0;
 	double dx=0;
@@ -427,73 +466,83 @@ while(!connected){
 		nearpos=CLOSEST(qrand,Source_nodes);
 		qnear.x=Source_nodes[nearpos]->x;
 		qnear.y=Source_nodes[nearpos]->y;
-		std::cout<<"\n da source il qnear è"<<qnear.x<<" "<<qnear.y;
+		//std::cout<<"\n da source il qnear è"<<qnear.x<<" "<<qnear.y;
 	}
 	else {	
 		nearpos=CLOSEST(qrand,Goal_nodes);
 		qnear.x=Goal_nodes[nearpos]->x;
 		qnear.y=Goal_nodes[nearpos]->y;
 		
-		std::cout<<"\n da goal il qnear è"<<qnear.x<<" "<<qnear.y;
+		//std::cout<<"\n da goal il qnear è"<<qnear.x<<" "<<qnear.y;
 	}
+	
 	dist=qrand-qnear;
+	
 	double cat_x=qrand.x-qnear.x;
 	double cat_y=qrand.y-qnear.y;
 	double ang = atan2(cat_y, cat_x);
 	double cosTeta = cos(ang);
 	double sinTeta = sin(ang);
-	qnew.x=qrand.x;
-	qnew.y=qrand.y;
+	if(dist>MAX_LENGTH){
+				qnew.x=qnear.x+cosTeta*MAX_LENGTH;
+				qnew.y=qnear.y+sinTeta*MAX_LENGTH;
+				dist=qnew-qnear;
+				}
+	else{   qnew.x=qrand.x;
+		qnew.y=qrand.y;
+				}
 	bool free=map.no_collision(qnew.x,qnew.y);
 	//				std::cout<<" \n calcolo step";
 
+
+	if(free){ //EXPANSION
+//				std::cout<<" \n calcolo step";
 	
-	xstep=step*cosTeta;
-	ystep=step*sinTeta;
-	double buffx=xstep;
-	double buffy=ystep;
-	bool accomplished=false;
-	while(free&&(!accomplished)){
-		
-		accomplished=((step*count)>=dist);
-		free=(map.no_collision(qnear.x + xstep,qnear.y+ystep));
-		if(free&&(!accomplished)){
-			count++; 
-			xstep=buffx*count;
-			ystep=buffy*count;
-//			std::cout<<"\n free"<<count;
-			}
-		else if(free&&accomplished){
-			//aggiungi il nodo
-			qnew.x=qnear.x+(buffx*count);
-			qnew.y=qnear.y+(buffy*count);
+		xstep=step*cosTeta;
+		ystep=step*sinTeta;
+		while(free&&((step*count)<dist)){
 			
-		 }
+			qnew.x=qnear.x+xstep*count;
+			qnew.y=qnear.y+ystep*count;
+			//accomplished=(qnew-qnear)>=dist;
+			free=(map.no_collision(qnew.x,qnew.y));
+			if(free&&((step*count)<dist)){
+				count++;
+//						std::cout<<"\n free"<<count;
+				}
+			else if(free&&((step*count)>=dist)){
+				//aggiungi il nodo
+//						std::cout<<" \n 1qnew coordinate: "<<qnew.x<<"  "<<qnew.y;
+				count=0;
+				}
+			else if(!free){
+				qnew.x-=xstep;
+				qnew.y-=ystep;
+				//std::cout<<" \n qnew coordinate:"<<qnew.x<<"  "<<qnew.y; 
+				count=0;
 				
-		else if(!free){
-			if(count!=0){count--;}
-			qnew.x=qnear.x+xstep-buffx;
-			qnew.y=qnear.y+ystep-buffy;
-			
 			}
+			
 		}
 		
-		std::cout<<"\n il nuovo qnew è"<<qnew.x<<" "<<qnew.y;
+		
 		//std::cout<<" \n qnew coordinate:"<<qnew.x<<"  "<<qnew.y;
+		
 		if(from_source){
 		
 			ConIndex=FIND(qnew,Goal_nodes);
 			if(ConIndex>=0){
-			connected=true;
+			connection++;
 				//Source_nodes.push_back(Goal_nodes[ConIndex]);
-				Source_nodes[Source_nodes.size()-1]->add_link(Goal_nodes[ConIndex]);
-				Goal_nodes[ConIndex]->add_link(Source_nodes[Source_nodes.size()-1]);
-			}
-			else{
+				Source_nodes[nearpos]->add_link(Goal_nodes[ConIndex]);
+				Goal_nodes[ConIndex]->add_link(Source_nodes[nearpos]);
+			}// *********************END EXPANSION 
+			else{// *********************BEGIN CONNECTION FROM GOAL TO SOURCE
 				if(ADD_NODE(qnew,Source_nodes)){
 				Source_nodes[Source_nodes.size()-1]->add_link(Source_nodes[nearpos]);
 				Source_nodes[nearpos]->add_link( Source_nodes[Source_nodes.size()-1]);
-					} 
+				}
+		
 			
 			count=0;
 			nearpos=CLOSEST(qnew,Goal_nodes);
@@ -507,38 +556,42 @@ while(!connected){
 			sinTeta = sin(ang);
 			xstep=step*cosTeta;
 			ystep=step*sinTeta;
-			buffx=xstep;
-			buffy=ystep;
-			accomplished=false;
-			while(free&&(!accomplished)){
-				
-				accomplished=((step*count)>=dist);
-				free=(map.no_collision(qnear.x + xstep,qnear.y+ystep));
-				if(free&&(!accomplished)){
-				count++; 
-				xstep=buffx*count;
-				ystep=buffy*count;
-	//			std::cout<<"\n free"<<count;
-				}
-				else if(free&&accomplished){
-					qnew.x=qnear.x+(buffx*count);
-					qnew.y=qnear.y+(buffy*count);
+			free=map.no_collision(qnew.x,qnew.y);
 			
-				 }
-					
-				else if(!free){
-					if(count!=0){count--;}
-					qnew.x=qnear.x+xstep-buffx;
-					qnew.y=qnear.y+ystep-buffy;
-					}
+			
+			while(free&&((step*count)<dist)){
 				
+				qnew.x=qnear.x+xstep*count;
+				qnew.y=qnear.y+ystep*count;
+				//accomplished=(qnew-qnear)>=dist;
+				free=(map.no_collision(qnew.x,qnew.y));
+				if(free&&((step*count)<dist)){
+					count++;
+		//						std::cout<<"\n free"<<count;
+					}
+				else if(free&&((step*count)>=dist)){
+					//aggiungi il nodo
+		//						std::cout<<" \n 1qnew coordinate: "<<qnew.x<<"  "<<qnew.y;	
+					count=0;
+					}
+				else if(!free){
+				if(count==0){qnew.x=qnear.x;qnew.y=qnear.y;}
+				else{
+					qnew.x-=xstep;
+					qnew.y-=ystep;
+					//std::cout<<" \n qnew coordinate:"<<qnew.x<<"  "<<qnew.y;
+					count=0;
 				}
+					
+				}
+				
+			}
 			ConIndex=FIND(qnew,Source_nodes);
 			if(ConIndex>=0){
 				//Goal_nodes.push_back(Source_nodes[ConIndex]);
-				connected=true;
-				Goal_nodes[Goal_nodes.size()-1]->add_link(Source_nodes[ConIndex]);
-				Source_nodes[ConIndex]->add_link(Goal_nodes[Goal_nodes.size()-1]);
+				connection++;
+				Goal_nodes[nearpos]->add_link(Source_nodes[ConIndex]);
+				Source_nodes[ConIndex]->add_link(Goal_nodes[nearpos]);
 			}
 			else{
 			if(ADD_NODE(qnew,Goal_nodes)){
@@ -552,7 +605,6 @@ while(!connected){
 		else{ //viceversa
 			ConIndex=FIND(qnew,Source_nodes);
 			if(ConIndex>=0){
-				connected=true;
 				//Goal_nodes.push_back(Source_nodes[ConIndex]);
 				Goal_nodes[Goal_nodes.size()-1]->add_link(Source_nodes[ConIndex]);
 				Source_nodes[ConIndex]->add_link(Goal_nodes[Goal_nodes.size()-1]);
@@ -577,33 +629,40 @@ while(!connected){
 			sinTeta = sin(ang);
 			xstep=step*cosTeta;
 			ystep=step*sinTeta;
-			buffx=xstep;
-			buffy=ystep;
-			accomplished=false;
-			while(free&&(!accomplished)){
-				
-				accomplished=((step*count)>=dist);
-				free=(map.no_collision(qnear.x + xstep,qnear.y+ystep));
-				if(free&&(!accomplished)){
-				count++; 
-				xstep=buffx*count;
-				ystep=buffy*count;
-	//			std::cout<<"\n free"<<count;
+			std::cout<<" \n qnear coordinate:"<<qnear.x<<"  "<<qnear.y;
+			std::cout<<" \n qnew coordinate:"<<qnew.x<<"  "<<qnew.y;
+			std::cout<<"\n step:"<<xstep<<" "<<ystep<<std::endl;
+			std::cout<<"\n ********* \n";
+			free=map.no_collision(qnew.x,qnew.y);
+			while(free&&((step*count)<dist)){
+			
+			qnew.x=qnear.x+xstep*count;
+			qnew.y=qnear.y+ystep*count;
+			//accomplished=(qnew-qnear)>=dist;
+			free=(map.no_collision(qnew.x,qnew.y));
+			if(free&&((step*count)<dist)){
+				count++;
+	//						std::cout<<"\n free"<<count;
 				}
-				else if(free&&accomplished){
-					qnew.x=qnear.x+(buffx*count);
-					qnew.y=qnear.y+(buffy*count);
-				 }
-					
-				else if(!free){
-					if(count!=0){count--;}
-					qnew.x=qnear.x+xstep-buffx;
-					qnew.y=qnear.y+ystep-buffy;
-					}
+			else if(free&&((step*count)>=dist)){
+				//aggiungi il nodo
+	//						std::cout<<" \n 1qnew coordinate: "<<qnew.x<<"  "<<qnew.y;
+
+				
+				count=0;
+				}
+			else if(!free){
+				qnew.x-=xstep;
+				qnew.y-=ystep;
+				//std::cout<<" \n qnew coordinate:"<<qnew.x<<"  "<<qnew.y;
+				count=0;
+				
+			}
+			
 			}
 			ConIndex=FIND(qnew,Goal_nodes);
 			if(ConIndex>=0){
-				connected=true;
+				connection++;
 				//Source_nodes.push_back(Goal_nodes[ConIndex]);
 				Source_nodes[Source_nodes.size()-1]->add_link(Goal_nodes[ConIndex]);
 				Goal_nodes[ConIndex]->add_link(Source_nodes[Source_nodes.size()-1]);
@@ -616,7 +675,9 @@ while(!connected){
 			}
 			}
 	from_source=true;
-	}	
+	}
+}
+	if(connection>=3) connected=true;	
 
 
 }
@@ -626,7 +687,7 @@ for(int o=0;o<Source_nodes.size();o++){
 nodes_.push_back(Source_nodes[o]);
 }
 for(int o=0;o<Goal_nodes.size();o++){
-nodes_.push_back(Goal_nodes[o]);
+if(!find(*Goal_nodes[o])) nodes_.push_back(Goal_nodes[o]);
 if(o==0){ std::cout<<"\n il goal è:"<<nodes_[nodes_.size()-1]->x<<" "<<nodes_[nodes_.size()-1]->y<<"\n";
 std::cout<<"\nil numero dei links è:"<<nodes_[nodes_.size()-1]->links_.size();}
 }
@@ -640,11 +701,13 @@ std::cout<<" \n size of nodes: "<<nodes_.size();
 if(find(goal)){
 std::cout<<"\n goal belongs to nodes_";}
 std::cout<<"\n mission accomplished";
+//Source_nodes.resize(0);
+//Goal_nodes.resize(0);
 A_star_routine();
 }
 
 
-
+/*
 int main (int argc,char** argv) {
 ros::init(argc,argv,"mappin" ) ;
 Vertex qinit(0,0);
@@ -656,7 +719,7 @@ rrt.run(qinit,qdest);
 return 0;
 }
 
-/*if(ConIndex>=0){
+if(ConIndex>=0){
 		Source_nodes.push_back(Goal_nodes[ConIndex]);
 		}
 		else{*/
