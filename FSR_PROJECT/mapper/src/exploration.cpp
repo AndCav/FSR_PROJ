@@ -3,8 +3,8 @@
 
 int main (int argc,char** argv) {
 ros::init(argc,argv,"exploration" ) ;
-Vertex qinit(0,0);
-Vertex qdest(-5,-3);
+Vertex qinit(-6,6.5);
+Vertex qdest(0,0);
 RRT rrt;
 
 rrt.run(qinit,qdest);

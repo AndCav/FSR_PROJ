@@ -2,9 +2,12 @@
 #include "sensor_msgs/LaserScan.h"
 #include "nav_msgs/Odometry.h"
 #include "geometry_msgs/Twist.h"
+#include <eigen3/Eigen/Geometry>
+#include <eigen3/Eigen/Dense>
+#include <eigen3/Eigen/Core>
 #include <tf/tf.h>
 
-
+#define MAX_VEL 0.5
 
 /////CREATING CLASS VERTEX 
 
@@ -32,7 +35,8 @@ class Vertex {
   }
   
   double operator-(const Vertex &vert2){
-  return std::sqrt(std::pow(x - vert2.x , 2) + std::pow(y - vert2.y , 2));
+  double result=std::sqrt(std::pow(x - vert2.x , 2) + std::pow(y - vert2.y , 2));
+  return result;
   }
   void copy(const Vertex &vert2){
   x=vert2.x;
@@ -80,6 +84,7 @@ class NAVO {
         double get_yaw(){ return _yaw;}
 //        bool newValue(){bool newVal=_updated; _updated=false; return newVal;}
 	void tripto(std::vector<Vertex> path);
+	void IO_FBL(std::vector<Vertex> path);
     private:
         ros::NodeHandle _nh;
         ros::Subscriber _odom_sub;

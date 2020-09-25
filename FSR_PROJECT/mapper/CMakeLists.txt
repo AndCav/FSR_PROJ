@@ -11,6 +11,8 @@ find_package(catkin REQUIRED COMPONENTS
   roscpp
   rospy
   nav_msgs
+  geometry_msgs
+  tf
 )
 
 ## System dependencies are found with CMake's conventions
@@ -120,7 +122,7 @@ catkin_package(
 ## Specify additional locations of header files
 ## Your package locations should be listed before other locations
 include_directories(
-# include
+ include
   ${catkin_INCLUDE_DIRS}
 )
 
@@ -129,8 +131,12 @@ include_directories(
 #   src/${PROJECT_NAME}/mapper.cpp
 # )
 
-add_executable(mappin src/mapper2.cpp)
-target_link_libraries(mappin ${catkin_LIBRARIES})
+add_library(navigate src/navigate.cpp)
+target_link_libraries(navigate ${catkin_LIBRARIES})
+add_library(mapper src/mapper.cpp)
+target_link_libraries(mapper ${catkin_LIBRARIES})
+add_executable(exploration src/exploration.cpp)
+target_link_libraries(exploration navigate mapper ${catkin_LIBRARIES})
 
 ## Add cmake target dependencies of the library
 ## as an example, code may need to be generated before libraries

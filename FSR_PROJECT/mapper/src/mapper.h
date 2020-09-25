@@ -18,6 +18,7 @@ public:
 	void topic_callback(nav_msgs::OccupancyGrid data);
 	bool no_collision(double x,double y);
 	bool its_on(){return ison;}
+	bool get_value(double x,double y);
 	
 private:
 ros::NodeHandle _nh;
