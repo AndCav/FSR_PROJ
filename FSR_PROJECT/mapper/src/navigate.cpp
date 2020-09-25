@@ -32,7 +32,7 @@ void NAVO::odom_cb( nav_msgs::OdometryConstPtr odom ) {
 
     position.x = odom->pose.pose.position.x;
     position.y = odom->pose.pose.position.y;
-   // _updated=true;
+    _updated=true;
     
 }
 
@@ -53,22 +53,25 @@ double gamma=0.0001;
 double delta=0.0001;
 double ep_x=0;
 double ep_y=0;
-double k1=1;
-double k2=1;
-double k3=0.1;
+double k1=0.1;
+double k2=0.3;
+double k3=0.2;
 
 double v=0;
 double w=0;
 
 ros::Rate r(100);
-int ro=1;
+double ro=1;
 int c=0;
 Vertex nextpose=path[iteration];
 double des_yaw=0;
 
-while((position-path[0]>0.05)){
+while((position-path[0]>0.0)){
+if(_updated){
+	_updated=false;
 	ro=nextpose-position;
-	if(ro<0.05){
+	std::cout<<"\n ro "<<ro;
+	if(ro<=0.05){
 	std::cout<<"\n another point reached \n";
 		iteration--;
 		if(iteration>=0) nextpose=path[iteration];
@@ -76,24 +79,31 @@ while((position-path[0]>0.05)){
 		ep_y=nextpose.y-position.y;
 		des_yaw=atan2(ep_y,ep_x);
 		ro=nextpose-position;
+		
 	}
 	ep_x=nextpose.x-position.x;
 	ep_y=nextpose.y-position.y;
-	if(ep_x==0||ep_y==0){gamma=0;delta=0;}
-	else{
 		gamma=(atan2(ep_y,ep_x) - _yaw);
-		delta=atan2(ep_y,ep_x) - des_yaw;
-	}
-	v=k1*ro*cos(gamma);
-	w=k2*gamma+k1*((sin(gamma)*cos(gamma))/gamma)*(gamma+k3*delta);
-	if(v>0.5) v=0.5;
-	if(w>0.2) w=0.2;
+		delta=atan2(ep_y,ep_x) - des_yaw +pi;
+		v=k1*ro*cos(gamma);
+		if((gamma==0)||(delta==0)) w=0;
+		else w=k2*gamma+k1*((sin(gamma)*cos(gamma))/gamma)*(gamma+k3*delta);
+		
+	//if((v>1)||(w>1)) std::cout<<"\n thee velocities are "<<v<<" "<<w<<std::endl;
 	move(w,v);
 	r.sleep();
+	
 	}
+	}
+	std::cout<<"\nfinished";
 	v=0;
 	w=0;
 	move(w,v);
+	while(!_updated){}
+	double finalerror;
+	finalerror=position-path[0];
+	std::cout <<"\n finalerror :"<<finalerror;
+	std::cout<<"\nfinished";
 }
 
 void NAVO::move(double z_ang_vel, double x_vel){
@@ -107,4 +117,94 @@ void NAVO::move(double z_ang_vel, double x_vel){
         _cmd_vel_pub.publish(cmd);
 }
 
+void NAVO::IO_FBL(std::vector<Vertex> pathInv){
+std::vector<double> y1d;
+std::vector<double> y2d;
+std::vector<double> y1d_dot;
+std::vector<double> y2d_dot;
+double Ts=0.01;
+double b=0.1;
+double distance=0;
+double necTime=0;
+double vel=MAX_VEL*0.4;
+int nstep;
+double cat_x;
+double cat_y;
+double STEP=0;
+double xstep=0;
+double ystep=0;
+int actualplace=0;
+std::vector<Vertex> path;
+for(int i=pathInv.size()-1;i>=0;i--){
+path.push_back(pathInv[i]);
+}
+std::cout<<"\n new path";
+for(int i=0;i<path.size();i++){
+std::cout<<"\n ["<<path[i].x<<","<<path[i].y<<"]";
+}
+//generate trajectory
+for(int i=1;i<path.size();i++){
+	
+	distance=path[i]-path[i-1];
+	necTime=distance/vel;
+	nstep=round(necTime/Ts);
+	STEP=distance/nstep;
+	cat_x=path[i].x-path[i-1].x;
+	cat_y=path[i].y-path[i-1].y;
+	double ang = atan2(cat_y, cat_x);
+	xstep=STEP*cos(ang);
+	ystep=STEP*sin(ang);
+	
+	double nextx=path[i-1].x;
+	double nexty=path[i-1].y;
+	for(int j=0;j<nstep;j++){
+		y1d.push_back(nextx+j*xstep);
+		y2d.push_back(nexty+j*ystep);
+	}
+}
+y1d.push_back(path[path.size()-1].x);
+y2d.push_back(path[path.size()-1].y);
+y1d_dot.push_back(0);
+y2d_dot.push_back(0);
+double derivative;
+for(int i=1;i<y1d.size();i++){
+derivative=(y1d[i]-y1d[i-1])/Ts;
+y1d_dot.push_back(derivative);
 
+
+derivative=(y2d[i]-y2d[i-1])/Ts;
+y2d_dot.push_back(derivative);
+
+}
+
+int time=0;
+ros::Rate r(100);
+double y1=0;
+double y2=0;
+double k1=2;
+double k2=1.5;
+double u1;
+double u2;
+double v;
+double w;
+std::cout<<"\n \n ********** \n";
+while((position-path[path.size()-1])>0.05){
+	
+std::cout<<"\n time"<<time<<"["<<position.x<<","<<position.y<<"]";
+std::cout<<"\n time"<<time<<"["<<y1d[time]<<","<<y2d[time]<<"]"<<"["<<y1<<","<<y2<<"]";
+	y1=position.x+b*cos(_yaw);
+	y2=position.y+b*sin(_yaw);
+	u1=y1d_dot[time]+k1*(y1d[time]-y1);
+	u2=y2d_dot[time]+k2*(y2d[time]-y2);
+	v=u1*cos(_yaw) + u2*sin(_yaw);
+	w=(-u2*sin(_yaw) + u2*cos(_yaw))/b;
+	move(w,v);
+	if(time<(y1d.size())){	
+		time++;
+		}
+	r.sleep();
+	
+	}
+
+move(0,0);
+}
