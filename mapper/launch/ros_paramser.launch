@@ -1,0 +1,11 @@
+<?xml version="1.0"?>
+<launch>
+
+<!--just  Tb3 params-->
+  <param name="x_initial" value="-6">
+  <param name="y_initial" value="6">
+  <param name="x_dest" value="0">
+  <param name="y_dest" value="0">
+  
+  
+</launch>
