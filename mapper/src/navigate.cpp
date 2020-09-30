@@ -94,10 +94,88 @@ NAVO::NAVO(){
         _cmd_vel_pub = _nh.advertise< geometry_msgs::Twist>("tb3_0/cmd_vel", 0);
        // _cmd_rightWheel_pub=_nh.advertise< std_msgs::Float64>("p3dx_1/right_wheel_velocity_controller/command", 1);
         //_cmd_leftWheel_pub=_nh.advertise< std_msgs::Float64>("tb3_0/left_wheel_velocity_controller/command", 1);
+        xd_plot.resize(0);
+        yd_plot.resize(0);
+        x_plot.resize(0);
+        y_plot.resize(0);        
+        y1_plot.resize(0);        
+        y2_plot.resize(0);     
+        v_plot.resize(0);        
+        w_plot.resize(0);
+        
+        xd_pub=_nh.advertise<std_msgs::Float64>("tb3_0_xd",100);
+        yd_pub=_nh.advertise<std_msgs::Float64>("tb3_0_yd",100);
+        v_pub=_nh.advertise<std_msgs::Float64>("tb3_0_v",100);
+        w_pub=_nh.advertise<std_msgs::Float64>("tb3_0_w",100);
+        x_pub=_nh.advertise<std_msgs::Float64>("tb3_0_x",100);
+        y_pub=_nh.advertise<std_msgs::Float64>("tb3_0_y",100);
+        y1_pub=_nh.advertise<std_msgs::Float64>("tb3_0_y1",100);
+        y2_pub=_nh.advertise<std_msgs::Float64>("tb3_0_y2",100);
+        err_pub=_nh.advertise<std_msgs::Float64>("tb3_0_err",100);
+        err_y_pub=_nh.advertise<std_msgs::Float64>("tb3_0_err_y",100);
         _updated=false;
 }
 
-void NAVO::tripto(std::vector<Vertex> path, double k1,double k2, double k3){
+void NAVO::plot(){
+double error;
+double error_y;
+int y1_size=y1_plot.size();
+double y1;
+double y2;
+std_msgs::Float64 mess_x;
+std_msgs::Float64 mess_y;
+std_msgs::Float64 mess_v;
+std_msgs::Float64 mess_w;
+std_msgs::Float64 mess_xd;
+std_msgs::Float64 mess_yd;
+std_msgs::Float64 mess_y1;
+std_msgs::Float64 mess_y2;
+std_msgs::Float64 mess_err;
+std_msgs::Float64 mess_err_y;
+ros::Rate loop(100);
+for(int i=0;i < x_plot.size();i++){
+
+	mess_xd.data=xd_plot[i];
+	xd_pub.publish(mess_xd);
+	
+	mess_yd.data=yd_plot[i];
+	yd_pub.publish(mess_yd);
+	
+	mess_x.data=x_plot[i];
+	x_pub.publish(mess_x);
+	
+	mess_y.data=y_plot[i];
+	y_pub.publish(mess_y);
+	
+	mess_err.data=std::sqrt(std::pow(xd_plot[i] - x_plot[i] , 2) + std::pow(yd_plot[i] - y_plot[i] , 2));
+	
+	/*if(i>=y1_size){ y1=y1_plot[y1_size];y2=y2_plot[y1_size];
+	
+	}
+	else{y1=y1_plot[i];y2=y2_plot[i];
+	mess_err_y.data=std::sqrt(std::pow(xd_plot[i] - y1, 2) + std::pow(yd_plot[i] - y2 , 2));
+	}
+	*/
+	
+	err_pub.publish(mess_err);
+	//err_y_pub.publish(mess_err_y);
+	
+	mess_v.data=v_plot[i];
+	v_pub.publish(mess_v);
+	mess_w.data=w_plot[i];
+	w_pub.publish(mess_w);
+	mess_y1.data=y1;
+	mess_y2.data=y2;
+	y1_pub.publish(mess_y1);
+	y2_pub.publish(mess_y2);
+	loop.sleep();
+}
+
+
+
+
+}
+void NAVO::Post_Reg(std::vector<Vertex> path, double k1,double k2, double k3){
 int iteration=path.size()-1;
 double gamma=0.0001;
 double delta=0.0001;
@@ -119,12 +197,16 @@ Vertex nextpose=path[iteration];
 double des_yaw=0;
 double act_yaw=_yaw;
 
-while(ros::ok){
+while((position-path[0]>0.05)||(abs(_yaw-des_yaw)>0.05)){
 if(_updated){
 	act_yaw=_yaw;
 	_updated=false;
 	ro=nextpose-position;
-	std::cout<<"\n ro "<<ro;
+	x_plot.push_back(position.x);
+	y_plot.push_back(position.y);
+	xd_plot.push_back(nextpose.x);
+	yd_plot.push_back(nextpose.y);
+	//std::cout<<"\n ro "<<ro;
 	if(ro<=0.05){
 		iteration--;
 		if(iteration>=0) {nextpose=path[iteration];
@@ -132,6 +214,7 @@ if(_updated){
 		ep_y=nextpose.y-position.y;
 		des_yaw=atan2(ep_y,ep_x);
 		ro=nextpose-position;}
+		else{ des_yaw=0;}
 		
 		
 	}
@@ -148,28 +231,26 @@ if(_updated){
 	//}	
 	//if((v>1)||(w>1)) std::cout<<"\n thee velocities are "<<v<<" "<<w<<std::endl;
 	
+	if(v>0.23) v=0.23;
+	else if(v<-0.23) v=-0.23;
 	
+	
+	if(w>2.83) w=2.83;
+	else if(w<-2.83) w=-2.83;
+	
+	
+	v_plot.push_back(v);
+	w_plot.push_back(w);
 	move(w,v);
-	std::cout<<" v,w:"<<v<<" "<<w;
+	//std::cout<<" v,w:"<<v<<" "<<w;
 //	moveWheel(w,v);
 	r.sleep();
 	
 	}
 	}
 	std::cout<<"\nfinished";
-	
-	move(-w,-v);
 	v=0;
 	w=0;
-	r.sleep();
-	move(w,v);
-	
-	move(w,v);
-	
-	move(w,v);
-	
-	move(w,v);
-	
 	move(w,v);
 	
 	while(!_updated){}
@@ -178,6 +259,7 @@ if(_updated){
 	finalerror=position-path[0];
 	std::cout <<"\n finalerror :"<<finalerror;
 	std::cout<<"\nfinished";
+	plot();
 }
 
 void NAVO::move(double z_ang_vel, double x_vel){
@@ -283,18 +365,31 @@ bool traj=true;
 while((position-path[end_path])>0.2){
 //std::cout<<"\n time"<<time<<"["<<position.x<<","<<position.y<<"]";
 //std::cout<<"\n time"<<time<<"["<<y1d[time]<<","<<y2d[time]<<"]"<<"["<<y1<<","<<y2<<"]";
+	x_plot.push_back(position.x);
+	y_plot.push_back(position.y);
 	y1=position.x+b*cos(_yaw);
 	y2=position.y+b*sin(_yaw);
+	y1_plot.push_back(y1);
+	y2_plot.push_back(y2);
+	xd_plot.push_back(y1d[time]);
+	yd_plot.push_back(y2d[time]);
+	
 	u1=y1d_dot[time]+k1*(y1d[time]-y1);
 	u2=y2d_dot[time]+k2*(y2d[time]-y2);
 	v=u1*cos(_yaw) + u2*sin(_yaw);
 	w=(-u1*sin(_yaw) + u2*cos(_yaw))/b;
+	v_plot.push_back(v);
+	w_plot.push_back(w);
 	
-	if(v>0.22){std::cout<<"\n VELOCITÀ CURVATURA: "<<v;v=0.22; }
-	if((w>2.84)||(w<-2.84)){std::cout<<"\n tokyo Fast and Furious :"<<w;}
+	
+	if(v>0.22){ std::cout<<"\n Exceeding Velocity "<<v;
+	v=0.22; }
+	//else if(v<-0.22){std::cout<<"\n Exceeding Velocity "<<v; }
+	
+	//if((w>2.84)||(w<-2.84)){std::cout<<"\n Exceeding Angular Velocity :"<<w;}
 	move(w,v);
 	
-	std::cout<<"\n error e1:"<<(y1d[time]-position.x)<<" e2: "<<(y2d[time]-position.y);
+	//std::cout<<"\n error e1:"<<(y1d[time]-position.x)<<" e2: "<<(y2d[time]-position.y);
 	if(time<(y1d.size())&&traj){	
 		time++;
 		}
@@ -307,6 +402,6 @@ while((position-path[end_path])>0.2){
 	}
 std::vector<Vertex> path_last;
 path_last.push_back(path[end_path]);
-tripto(path_last,0.8,1.2,1.5);
+Post_Reg(path_last,0.8,1.2,1.5);
 move(0,0);
 }

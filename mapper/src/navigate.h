@@ -85,7 +85,7 @@ class NAVO {
         double get_y(){ return _y;}
         double get_yaw(){ return _yaw;}
 //        bool newValue(){bool newVal=_updated; _updated=false; return newVal;}
-	void tripto(std::vector<Vertex> path, double k1,double k2, double k3);
+	void Post_Reg(std::vector<Vertex> path, double k1,double k2, double k3);
 	void IO_FBL(std::vector<Vertex> path);
     private:
         ros::NodeHandle _nh;
@@ -100,5 +100,26 @@ class NAVO {
         double _y;
         void odom_cb( nav_msgs::OdometryConstPtr );
         bool _updated;
+        void plot();
+        //study variables
+        ros::Publisher xd_pub;
+        ros::Publisher yd_pub;
+        ros::Publisher v_pub;
+        ros::Publisher w_pub;
+        ros::Publisher x_pub;
+        ros::Publisher y_pub;
+        ros::Publisher y1_pub;
+        ros::Publisher y2_pub;
+        ros::Publisher err_pub;
+        ros::Publisher err_y_pub;
+        std::vector<double> xd_plot;
+        std::vector<double> yd_plot;
+        std::vector<double> x_plot;
+        std::vector<double> y_plot;        
+        std::vector<double> y1_plot;        
+        std::vector<double> y2_plot;     
+        std::vector<double> v_plot;        
+        std::vector<double> w_plot;
+        
 };
 

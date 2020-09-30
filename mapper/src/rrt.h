@@ -74,6 +74,7 @@ class RRT{
   	double MAX_LENGTH;
   	double step;
 	ros::Publisher vis_pub;
+	NAVO navigator;
 
 };
 

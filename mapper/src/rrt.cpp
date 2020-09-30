@@ -151,10 +151,12 @@ visualization_msgs::Marker marker;
 visualization_msgs::Marker marker_line;
 
 if(from=="source"){
+marker.color.a = 1.0;
 marker.color.r = 0.0;
 marker.color.g = 1.0;
 marker.color.b = 0.0;
 marker.ns = "Source";
+marker_line.color.a = 1.0;
 marker_line.color.r = 1.0;
 marker_line.color.g = 1.0;
 marker_line.color.b = 0.0;
@@ -162,6 +164,7 @@ marker_line.color.b = 0.0;
 marker_line.ns = "Source";
 }
 else if(from=="goal"){
+marker.color.a = 1.0;
 marker.color.r = 0.0;
 marker.color.g = 0.0;
 marker.color.b = 1.0;
@@ -172,14 +175,14 @@ marker_line.color.b = 1.0;
 marker_line.ns = "Goal";
 }
 else{
-marker.color.r = 1.0;
-marker.color.g = 0.0;
-marker.color.b = 1.0;
+marker.color.r = 255;
+marker.color.g = 0;
+marker.color.b = 0;
 marker.color.a = 1.0;
 marker.ns = "connect";
-marker_line.color.r = 1.0;
-marker_line.color.g = 0.0;
-marker_line.color.b = 1.0;
+marker_line.color.r = 255;
+marker_line.color.g = 0;
+marker_line.color.b = 0;
 marker_line.color.a = 1.0;
 marker_line.ns = "connect";
 }
@@ -368,10 +371,10 @@ while((*Qbest!=goal)&&(open_size!=0)){
 	}
 	*/
 	
-		NAVO navigator;
+		
 		sleep(1);
 		navigator.IO_FBL(path);
-		//navigator.tripto(path,0.2,1.2,0.8);
+		//navigator.Post_Reg(path,0.21,1.2,0.8);
 	}
 	
 }
@@ -404,7 +407,8 @@ void RRT::iter(int SorG){
 	//do nothing
 	};
 	int s=0;
-	ros::Rate r(1000);
+	ros::Rate r(100);
+	
 	while(s < MAX_ITER){
 		
 		x_rand= distX(engx)/100;
@@ -454,10 +458,10 @@ void RRT::iter(int SorG){
 						if(ADD_NODE(qnew,nodes)){ 
 							nodes[nodes.size()-1]->add_link(nodes[nearpos]);
 							nodes[nearpos]->add_link( nodes[nodes.size()-1]);
-							if(SorG==1) createMarker(*nodes[nearpos],*nodes[nodes.size()-1],"source");
-							if(SorG==2) createMarker(*nodes[nearpos],*nodes[nodes.size()-1],"goal");
+							//if(SorG==1) createMarker(*nodes[nearpos],*nodes[nodes.size()-1],"source");
+							//if(SorG==2) createMarker(*nodes[nearpos],*nodes[nodes.size()-1],"goal");
 							s++;
-							std::cout<<"\n s:"<<s;
+							//std::cout<<"\n s:"<<s;
 						 }
 						count=1;
 						}
@@ -475,6 +479,7 @@ void RRT::iter(int SorG){
 		}
 		
 	fromSource=true;
+	connect();
 	}
 	else{
 		for(int o=0;o<nodes.size();o++){
@@ -483,6 +488,7 @@ void RRT::iter(int SorG){
 		}
 		
 	fromGoal=true;
+	while(ros::ok()){sleep(10);}
 	}
 
 }
@@ -496,7 +502,7 @@ void RRT::run(Vertex s,Vertex g) {
 	
 	boost::thread get_fromSource_t( &RRT::iter, this,1);
 	boost::thread get_fromGoal_t( &RRT::iter, this,2);
-	boost::thread connect_t( &RRT::connect, this);
+	//boost::thread connect_t( &RRT::connect, this);
 	
 	ros::spin();
 	/*Source_nodes.clear();
@@ -606,13 +612,15 @@ while(!connected){
 			if(ConIndex>=0){connection++;
 				Source_nodes[nearpos]->add_link(Goal_nodes[ConIndex]);
 				Goal_nodes[ConIndex]->add_link(Source_nodes[nearpos]);
+				
+				//createMarker(*Source_nodes[nearpos],*Goal_nodes[ConIndex],"connect");
 			}// *********************END EXPANSION 
 			else{// *********************BEGIN CONNECTION FROM GOAL TO SOURCE
 			
 				if(ADD_NODE(qnew,Source_nodes)){ SourceSize=Source_nodes.size()-1;
 					Source_nodes[SourceSize]->add_link(Source_nodes[nearpos]);
 					Source_nodes[nearpos]->add_link( Source_nodes[SourceSize]);
-				createMarker(qnear,qnew,"source");
+				//createMarker(qnear,qnew,"source");
 				}
 		
 			
@@ -667,7 +675,7 @@ while(!connected){
 				if(ConIndex>=0){
 				//std::cout<<" \nfound a connection";
 				connection++;
-				createMarker(*Goal_nodes[nearpos],*Source_nodes[ConIndex],"connection");
+				//createMarker(*Goal_nodes[nearpos],*Source_nodes[ConIndex],"connect");
 				Goal_nodes[nearpos]->add_link(Source_nodes[ConIndex]);
 				Source_nodes[ConIndex]->add_link(Goal_nodes[nearpos]);
 				}
@@ -675,7 +683,7 @@ while(!connected){
 				if(ADD_NODE(qnew,Goal_nodes)){ GoalSize=Goal_nodes.size()-1;
 				Goal_nodes[GoalSize]->add_link(Goal_nodes[nearpos]);
 				Goal_nodes[nearpos]->add_link( Goal_nodes[GoalSize]);
-				createMarker(qnew,qnear,"goal");
+				//createMarker(qnew,qnear,"goal");
 						}
 				}
 	
@@ -688,6 +696,8 @@ while(!connected){
 			if(ConIndex>=0){
 			//createMarker(*Source_nodes[ConIndex],*Goal_nodes[nearpos],"connection");
 			connection++;
+			
+				//createMarker(*Goal_nodes[nearpos],*Source_nodes[ConIndex],"connect");
 			Goal_nodes[nearpos]->add_link(Source_nodes[ConIndex]);
 			Source_nodes[ConIndex]->add_link(Goal_nodes[nearpos]);
 			}// *********************END EXPANSION 
@@ -696,7 +706,7 @@ while(!connected){
 				if(ADD_NODE(qnew,Goal_nodes)){GoalSize=Goal_nodes.size()-1;
 					Goal_nodes[GoalSize]->add_link(Goal_nodes[nearpos]);
 					Goal_nodes[nearpos]->add_link( Goal_nodes[GoalSize]);
-					createMarker(qnew,qnear,"goal");
+					//createMarker(qnew,qnear,"goal");
 				}
 			count=1;
 			nearpos=CLOSEST(qnew,Source_nodes);
@@ -742,7 +752,7 @@ while(!connected){
 				ConIndex=FIND(qnew,Goal_nodes);
 				if(ConIndex>=0){
 					
-				createMarker(qnear,qnew,"connection");
+				//createMarker(*Source_nodes[nearpos],*Goal_nodes[ConIndex],"connect");
 					connection++;
 					Source_nodes[nearpos]->add_link(Goal_nodes[ConIndex]);
 					Goal_nodes[ConIndex]->add_link(Source_nodes[nearpos]);
@@ -752,6 +762,7 @@ while(!connected){
 				if(ADD_NODE(qnew,Source_nodes)){
 				
 				
+				//createMarker(qnear,qnew,"source");
 				SourceSize=Source_nodes.size()-1;
 				Source_nodes[SourceSize]->add_link(Source_nodes[nearpos]);
 				Source_nodes[nearpos]->add_link(Source_nodes[SourceSize]);
@@ -764,7 +775,7 @@ while(!connected){
 		}
 }	
 std::cout<<"\n connection:"<<connection;
-if(connection>=40) connected=true;	
+if(connection>=20) connected=true;	
 }
 std::cout<<"\n size of sources: "<<Source_nodes.size()<<" "<<SourceSize;
 std::cout<<"\n size of goal: "<<Goal_nodes.size()<<" "<<GoalSize;
