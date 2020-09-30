@@ -1,0 +1,40 @@
+<launch>
+  <!-- Turtlebot robot model -->	
+
+ <arg name="model" default="waffle_pi"/>
+  <!-- 
+      Only allow users to set (x,y,yaw), otherwise initial 
+      2D pose estimates will be wrong 
+  -->
+  <arg name="x_pos" default="-2.5"/>
+  <arg name="y_pos" default="6.0"/>
+  <arg name="yaw" default="0.0"/>
+
+  <!-- Floor is not at 0.0 currently -->
+  <arg name="z_pos" value="0.30"/>
+
+  <!-- 
+       Always set GUI to false for AWS RoboMaker Simulation
+       Use gui:=true on roslaunch command-line to run with a gui.
+  -->
+  <arg name="gui" default="true"/>
+
+  <!-- Load the bookstore world into Gazebo -->
+  <include file="$(find aws_robomaker_bookstore_world)/launch/bookstore.launch">
+    <arg name="gui" value="$(arg gui)"/>
+  </include>
+
+  <param name="robot_description" command="$(find xacro)/xacro --inorder $(find turtlebot3_description)/urdf/turtlebot3_waffle.urdf.xacro" />
+
+  <node pkg="robot_state_publisher" type="robot_state_publisher" name="robot_state_publisher" output="screen">
+    <param name="publish_frequency" type="double" value="50.0" />
+  </node>
+  <include file="$(find aws_robomaker_bookstore_world)/launch/turtlebot3_navigation.launch">
+    <arg name="map_file" value="$(find aws_robomaker_bookstore_world)/maps/my_bookstoremap.yaml"/>
+    <!-- Initial pose must match the starting position of the robot for an aligned map -->
+    <arg name="initial_pose_x" value="$(arg x_pos)"/>
+    <arg name="initial_pose_y" default="$(arg y_pos)"/>
+    <arg name="initial_pose_a" default="$(arg yaw)"/>
+    <arg name="open_rviz" value="false"/>
+  </include>
+</launch>
