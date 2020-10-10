@@ -359,7 +359,6 @@ while((*Qbest!=goal)&&(open_size!=0)){
 	Vertex buff(Qbest->x,Qbest->y);
 		path.push_back(buff);
 	ROS_INFO("path finito");
-	ROS_INFO("\n vafancul");
 	for(int i=0;i<nodes_.size();i++){
 	nodes_[i].reset();
 	}/*
