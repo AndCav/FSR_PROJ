@@ -19,6 +19,8 @@ $ roslaunch mapper rviz.launch (this one is not mandatory, available to open a r
 
 ```
 # Necessary dependencies :
+
+```
 $ sudo apt-get install ros-melodic-map-server
 
 --probably already downloaded dependencies but needed--
